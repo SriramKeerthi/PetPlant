@@ -31,16 +31,36 @@ void clearScreen(int red = 0x4B, int green = 0xAB, int blue = 0x5C) {
     tft.setCursor(0,0);
 }
 
+// Calculates distance from the beacon
+double calculateDistance(int txPower, double rssi) {
+    if (rssi == 0) {
+        return -1.0; // if we cannot determine accuracy, return -1.
+    }
+
+    double ratio = rssi*1.0/txPower;
+    if (ratio < 1.0) {
+        return pow(ratio,10);
+    }
+    else {
+        double accuracy =  (0.89976)*pow(ratio,7.7095) + 0.111;
+        return accuracy;
+    }
+    // return sqrt(pow(10, (txPower - rssi)/10.0));
+}
+
+long lastDeviceNear = millis();
+
 // Callback for aadvertised devices
 class PetPlantCallbacks: public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) {
         uint8_t *data = (uint8_t*)advertisedDevice.getManufacturerData().data();
         int len = advertisedDevice.getManufacturerData().length();
-        String adv = String(BLEUtils::buildHexData(nullptr, data, len));
+        String manufacturerData = String(BLEUtils::buildHexData(nullptr, data, len));
         int major = (data[len-5]<<8 | data[len-4]);
         int minor = (data[len-3]<<8 | data[len-2]);
+        int txPower = (int8_t)data[len-1];
         if (pref.isKey(CFG_OWNER_UUID)) { // There is an owner already
-            if (pref.getString(CFG_OWNER_UUID).equals(adv.substring(8, 40))) { // And it's communicating
+            if (pref.getString(CFG_OWNER_UUID).equals(manufacturerData.substring(8, 40))) { // And it's communicating
                 if (major == pref.getInt(CFG_CODE)) {
                     if (minor == 0) {
                         clearScreen();
@@ -53,7 +73,15 @@ class PetPlantCallbacks: public BLEAdvertisedDeviceCallbacks {
                         delay(1000);
                         ESP.restart();
                     } else {
-                        // Do something useful
+                        int rxPower = advertisedDevice.getRSSI();
+                        double distance = calculateDistance(txPower, rxPower);
+                        Serial.printf("TX: %d RX: %d Distance: %lfm\n", txPower, rxPower, distance);
+                        if (distance < 2.0) {
+                            lastDeviceNear = millis();
+                            if (distance < 0.5) {
+                                ledcWrite(LED_CHANNEL, 255);
+                            }
+                        }
                     }
                 } else {
                     // Code seems wrong, ignore
@@ -62,7 +90,7 @@ class PetPlantCallbacks: public BLEAdvertisedDeviceCallbacks {
         } else {
             // Check if advertiser is trying to connect
             if (pref.getInt(CFG_CODE) == major && minor > 0) {
-                pref.putString(CFG_OWNER_UUID, adv.substring(8, 40));
+                pref.putString(CFG_OWNER_UUID, manufacturerData.substring(8, 40));
                 Serial.printf("Registered new owner: %s!\n", pref.getString(CFG_OWNER_UUID).c_str());
                 ledcWrite(LED_CHANNEL, 0);
             }
@@ -124,10 +152,12 @@ void setup() {
 void loop() {
     if (!pref.isKey(CFG_OWNER_UUID)) {
         ledcWrite(LED_CHANNEL, 255);
-        tft.setCursor(0,0);
+        tft.setCursor(42,42);
         tft.printf("%04d", pref.getInt(CFG_CODE));
     } else {
-        // Do something else
+        if (millis() - lastDeviceNear > 2000) {
+            ledcWrite(LED_CHANNEL, 0);
+        }
     }
     delay(100);
 }
