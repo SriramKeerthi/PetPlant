@@ -145,7 +145,6 @@ void setup() {
 
     Serial.println("Checking for owner...");
     pref.begin("myplantpet");
-    pref.remove(CFG_OWNER_UUID);
     if (pref.isKey(CFG_OWNER_UUID)) {
         Serial.printf("Owner exists: %s\n", pref.getString(CFG_OWNER_UUID).c_str());
     } else {
@@ -269,7 +268,6 @@ char hl[] = {253, 253, 253, 253, 253, 253, 253, 253, 253, 253, 253, 253, 253, 0}
 long lastPrint = millis();
 long lastLog = millis();
 void loop() {
-    long startTime = millis();
     button1.loop();
     button2.loop();
 
