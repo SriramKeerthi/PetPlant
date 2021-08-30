@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <TFT_eSPI.h>
 
 void setup() {
     Serial.begin(115200);
