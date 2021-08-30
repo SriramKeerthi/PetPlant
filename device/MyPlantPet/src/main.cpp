@@ -7,26 +7,31 @@
 #include <Preferences.h>
 #include <Button2.h>
 
+
 /* Screen Settings */
-#define LED_CHANNEL    1
-#define LED_PIN        4
+#define LED_CHANNEL        1
+#define LED_PIN            4
+#define PIXEL_SIZE         15
+#define PIXELS_X           TFT_HEIGHT/PIXEL_SIZE
+#define PIXELS_Y           TFT_WIDTH/PIXEL_SIZE
+#define INACTIVITY_TIMEOUT 5000
+#define _RGB(r, g, b)      ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
+
 
 /* Input Settings */
-#define TOUCH_1        12
-#define TOUCH_2        13
-#define BUTTON_1       0
-#define BUTTON_2       35
+#define TOUCH_1            12
+#define TOUCH_2            13
+#define BUTTON_1           0
+#define BUTTON_2           35
 
 /* BLE Settings */
-#define BLE_SCAN_TIME  30
-#define BLE_INTERVAL   100
-#define BLE_WINDOW     99
+#define BLE_SCAN_TIME      30
+#define BLE_INTERVAL       100
+#define BLE_WINDOW         99
 
 /* Config Strings */
-#define CFG_OWNER_UUID "OWNER_UUID"
-#define CFG_CODE       "CODE"
-
-#define _RGB(r, g, b) ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
+#define CFG_OWNER_UUID     "OWNER_UUID"
+#define CFG_CODE           "CODE"
 
 TFT_eSPI tft = TFT_eSPI(135, 240);
 Preferences pref;
@@ -60,18 +65,20 @@ double calculateDistance(int txPower, double rssi) {
 long lastDeviceNear = millis();
 
 // Callback for aadvertised devices
-class PetPlantCallbacks: public BLEAdvertisedDeviceCallbacks {
+class MyPlantPetCallbacks: public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) {
         uint8_t *data = (uint8_t*)advertisedDevice.getManufacturerData().data();
         int len = advertisedDevice.getManufacturerData().length();
-        String manufacturerData = String(BLEUtils::buildHexData(nullptr, data, len));
+        char *temp = BLEUtils::buildHexData(nullptr, data, len);
+        String manufacturerData = String("") + temp;
+        free(temp);
         int major = (data[len-5]<<8 | data[len-4]);
         int minor = (data[len-3]<<8 | data[len-2]);
         int txPower = (int8_t)data[len-1];
+        int rxPower = advertisedDevice.getRSSI();
         if (pref.isKey(CFG_OWNER_UUID)) { // There is an owner already
             if (pref.getString(CFG_OWNER_UUID).equals(manufacturerData.substring(8, 40))) { // And it's communicating
                 if (major == pref.getInt(CFG_CODE)) {
-                    int rxPower = advertisedDevice.getRSSI();
                     double distance = calculateDistance(txPower, rxPower);
                     Serial.printf("TX: %d RX: %d Distance: %lfm\n", txPower, rxPower, distance);
                     if (distance < 2.0) {
@@ -117,9 +124,17 @@ void scanForDevices( void * pvParameters ) {
 
 int t1Base = 10;
 int t2Base = 10;
+bool faceMode = true;
+int r = 0x4B;
+int g = 0xAB;
+int b = 0x5C;
 void buttonClickHandler(Button2& btn) {
     t1Base = touchRead(TOUCH_1);
     t2Base = touchRead(TOUCH_2);
+}
+
+void tripleButtonClickHandler(Button2& btn) {
+    faceMode = !faceMode;
 }
 
 void setup() {
@@ -141,11 +156,11 @@ void setup() {
     button1.setClickHandler(buttonClickHandler);
     button1.setLongClickHandler(buttonClickHandler);
     button1.setDoubleClickHandler(buttonClickHandler);
-    button1.setTripleClickHandler(buttonClickHandler);
+    button1.setTripleClickHandler(tripleButtonClickHandler);
     button2.setClickHandler(buttonClickHandler);
     button2.setLongClickHandler(buttonClickHandler);
     button2.setDoubleClickHandler(buttonClickHandler);
-    button2.setTripleClickHandler(buttonClickHandler);
+    button2.setTripleClickHandler(tripleButtonClickHandler);
 
     Serial.println("Setting up screen...");
     ledcSetup(LED_CHANNEL, 5000, 8);
@@ -159,7 +174,7 @@ void setup() {
     // Initialize BLE device
     BLEDevice::init("MyPlantPet");
     pBLEScan = BLEDevice::getScan();
-    pBLEScan->setAdvertisedDeviceCallbacks(new PetPlantCallbacks());
+    pBLEScan->setAdvertisedDeviceCallbacks(new MyPlantPetCallbacks());
     pBLEScan->setActiveScan(true);
     pBLEScan->setInterval(BLE_INTERVAL);
     pBLEScan->setWindow(BLE_WINDOW);
@@ -168,33 +183,86 @@ void setup() {
     xTaskCreatePinnedToCore(
         scanForDevices,
         "scanForDevices",
-        10000,
+        64000,
         NULL,
         0,
         NULL,
         1);
 }
 
-char touchVal(int base, int val) {
+
+int lastFace = 0;
+int lastFrame = 0;
+String faces[4][2] = {
+    {
+        "...................................................................X..X..X..X.......XX....XX....................................................",
+        "...................................................................................X..X..X..X.......XX....XX...................................."
+    },
+    {
+        ".........................................................................XXXX......X..X..X..X.......XX....XX....................................",
+        "...................................................................XXXX............X..X..X..X.......XX....XX...................................."
+    },
+    {
+        "....................................................................XX....XX.......X..X..X..X...................................................",
+        "....................................................XX....XX.......X..X..X..X..................................................................."
+    },
+    {
+        "....................................XX....XX.......X..X..X..X......X..X..X..X......X..X..X..X.......XX....XX....................................",
+        "....................................XX....XX.......X..X..X..X......X..X..X..X......X..X..X..X.......XX....XX...................................."
+    }
+};
+
+void drawBitmap(String bitmap) {
+    for (int x = 0; x < PIXELS_Y; x++) {
+        for(int y = 0; y < PIXELS_X; y++) {
+            uint32_t col = bitmap.charAt(x*PIXELS_X+y) == '.' ? _RGB(r,g,b) : TFT_WHITE;
+            if (tft.readPixel(y*PIXEL_SIZE, x*PIXEL_SIZE) != col) {
+                tft.fillRect(y*PIXEL_SIZE, x*PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE, col);
+            }
+        }
+    }
+}
+
+void drawFace(int t1, int t2) {
+    int newFace = 0;
+    int newFrame = (lastFrame + 1) % 2;
+    if (t1 == 2 && t2 == 2) {
+        newFace = 3;
+    }
+    else if (t1 == 2 || t2 == 2 || (t1 == 1 && t2 == 1)) {
+        newFace = 2;
+    }
+    else if (t1 == 1 || t2 == 1) {
+        newFace = 1;
+    }
+    else {
+        newFace = 0;
+    }
+    if (newFace != lastFace) {
+        newFrame = 0;
+    }
+    drawBitmap(faces[newFace][newFrame]);
+    lastFace = newFace;
+    lastFrame = newFrame;
+}
+
+int touchVal(int base, int val) {
     if (val < base - 5) {
         return 2;
     }
     if (val < base - 2) {
         return 1;
     }
-    return ' ' - 175;
+    return 0;
 }
 
-char isTouched(int base, int val) {
-    return val < base - 5;
+char levelToChar(int level) {
+    return level == 0 ? ' ' : (level == 1 ? 176 : 177);
 }
 
-int r = 0x4B;
-int g = 0xAB;
-int b = 0x5C;
-long refreshRate = 100;
+long refreshRate = 10;
 long printRate = 500;
-long logRate = 200;
+long logRate = 1000;
 char* msg = new char[100];
 char hl[] = {253, 253, 253, 253, 253, 253, 253, 253, 253, 253, 253, 253, 253, 0};
 long lastPrint = millis();
@@ -204,6 +272,7 @@ void loop() {
     button1.loop();
     button2.loop();
 
+    // Calculate touch values
     int t1 = touchRead(TOUCH_1);
     if (t1 > t1Base)
         t1Base = t1;
@@ -216,17 +285,21 @@ void loop() {
     if (t1 == 0 || t2 == 0)
         return;
 
-    if (!pref.isKey(CFG_OWNER_UUID)) {
+
+    if (!pref.isKey(CFG_OWNER_UUID)) { // Device not bonded yet
         ledcWrite(LED_CHANNEL, 255);
         tft.setTextSize(7);
         tft.setCursor(42,42);
         tft.printf("%04d", pref.getInt(CFG_CODE));
     } else {
-        if (millis() - lastDeviceNear > 5000) {
+        if (millis() - lastDeviceNear > INACTIVITY_TIMEOUT) { // Device inactive, turn off
             ledcWrite(LED_CHANNEL, 0);
         } else {
-            sprintf(msg, " MyPlantPet\n%s\n\n T1: %02d/%02d %c\n T2: %02d/%02d %c\n", hl, t1, t1Base, 175 + touchVal(t1Base, t1), t2, t2Base, 175 + touchVal(t2Base, t2));
-            if (isTouched(t1Base, t1) && isTouched(t2Base, t2)) {
+            int t1Level = touchVal(t1Base, t1);
+            int t2Level = touchVal(t2Base, t2);
+
+            sprintf(msg, " MyPlantPet\n%s\n\n T1: %02d/%02d %c\n T2: %02d/%02d %c\n", hl, t1, t1Base, levelToChar(t1Level), t2, t2Base, levelToChar(t2Level));
+            if (t1Level == 2 && t2Level == 2) {
                 r = random(0,255);
                 g = random(0,255);
                 b = random(0,255);
@@ -240,9 +313,14 @@ void loop() {
             }
             if (millis() - lastPrint > printRate) {
                 lastPrint = millis();
-                tft.setTextSize(3);
-                tft.setCursor(0,0);
-                tft.printf(msg);
+                if (faceMode) {
+                    drawFace(t1Level, t2Level);
+                }
+                else {
+                    tft.setTextSize(3);
+                    tft.setCursor(0,0);
+                    tft.printf(msg);
+                }
             }
         }
     }
