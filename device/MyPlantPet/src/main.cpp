@@ -92,7 +92,7 @@ class PetPlantCallbacks: public BLEAdvertisedDeviceCallbacks {
                         ESP.restart();
                     }
                 } else {
-                    // Code seems wrong, ignore
+                    // Owner Code seems wrong, ignore
                 }
             }
         } else {
@@ -101,6 +101,7 @@ class PetPlantCallbacks: public BLEAdvertisedDeviceCallbacks {
                 pref.putString(CFG_OWNER_UUID, manufacturerData.substring(8, 40));
                 Serial.printf("Registered new owner: %s!\n", pref.getString(CFG_OWNER_UUID).c_str());
                 ledcWrite(LED_CHANNEL, 0);
+                clearScreen();
             }
         }
     }
@@ -231,6 +232,7 @@ void loop() {
                 b = random(0,255);
                 clearScreen(r,g,b);
                 lastPrint = 0;
+                lastDeviceNear = millis(); // If it's touched, don't turn off yet
             }
             if (millis() - lastLog > logRate) {
                 Serial.println(msg);
