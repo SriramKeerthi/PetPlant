@@ -1382,6 +1382,11 @@
   dependencies:
     "@hapi/hoek" "^8.3.0"
 
+"@jaidis/react-native-ibeacon-simulator@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@jaidis/react-native-ibeacon-simulator/-/react-native-ibeacon-simulator-2.0.0.tgz#3e8a6e26258f875fae592365c7d39781646d4037"
+  integrity sha512-vmGvmhGv9iBFwU3+IMu8ZZN/qmP6g9ecSmnnW30LQad8V4dQhGIAXOzMTZxljBkiBTnCaukNY4Lj3DWAk3hOHg==
+
 "@jest/console@^24.9.0":
   version "24.9.0"
   resolved "https://registry.yarnpkg.com/@jest/console/-/console-24.9.0.tgz#79b1bc06fb74a8cfb01cbdedf945584b1b9707f0"
