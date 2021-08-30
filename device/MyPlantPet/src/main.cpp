@@ -12,8 +12,8 @@
 
 /* BLE Settings */
 #define BLE_SCAN_TIME  30
-#define BLE_INTERVAL   500
-#define BLE_WINDOW     499
+#define BLE_INTERVAL   100
+#define BLE_WINDOW     99
 
 /* Config Strings */
 #define CFG_OWNER_UUID "OWNER_UUID"
@@ -155,7 +155,7 @@ void loop() {
         tft.setCursor(42,42);
         tft.printf("%04d", pref.getInt(CFG_CODE));
     } else {
-        if (millis() - lastDeviceNear > 2000) {
+        if (millis() - lastDeviceNear > 5000) {
             ledcWrite(LED_CHANNEL, 0);
         }
     }
