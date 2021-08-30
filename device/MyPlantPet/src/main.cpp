@@ -28,6 +28,8 @@
 #define BLE_SCAN_TIME      30
 #define BLE_INTERVAL       100
 #define BLE_WINDOW         99
+#define CLOSE_DISTANCE     0.8
+#define NEARBY_DISTANCE    1.4
 
 /* Config Strings */
 #define CFG_OWNER_UUID     "OWNER_UUID"
@@ -82,9 +84,9 @@ class MyPlantPetCallbacks: public BLEAdvertisedDeviceCallbacks {
                     int rxPower = advertisedDevice.getRSSI();
                     double distance = calculateDistance(txPower, rxPower);
                     Serial.printf("TX: %d RX: %d Distance: %lfm\n", txPower, rxPower, distance);
-                    if (distance < 2.0) {
+                    if (distance < NEARBY_DISTANCE) {
                         lastDeviceNear = millis();
-                        if (distance < 0.5) {
+                        if (distance < CLOSE_DISTANCE) {
                             ledcWrite(LED_CHANNEL, 255);
                         }
                     }
