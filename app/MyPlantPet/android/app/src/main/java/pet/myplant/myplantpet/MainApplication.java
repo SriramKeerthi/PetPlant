@@ -1,4 +1,4 @@
-package pet.myplant.MyPlantPet;
+package pet.myplant.myplantpet;
 
 import android.app.Application;
 import android.content.Context;
@@ -11,7 +11,7 @@ import com.facebook.react.ReactNativeHost;
 import com.facebook.react.ReactPackage;
 import com.facebook.react.shell.MainReactPackage;
 import com.facebook.soloader.SoLoader;
-import pet.myplant.MyPlantPet.generated.BasePackageList;
+import pet.myplant.myplantpet.generated.BasePackageList;
 
 import org.unimodules.adapters.react.ReactAdapterPackage;
 import org.unimodules.adapters.react.ModuleRegistryAdapter;

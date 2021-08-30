@@ -1,4 +1,4 @@
-package pet.myplant.MyPlantPet;
+package pet.myplant.myplantpet;
 import android.content.res.Configuration;
 import android.content.Intent;
 

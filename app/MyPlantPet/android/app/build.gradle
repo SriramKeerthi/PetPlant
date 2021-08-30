@@ -132,12 +132,14 @@ android {
     }
 
     defaultConfig {
-        applicationId 'pet.myplant.MyPlantPet'
+        applicationId 'pet.myplant.myplantpet'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
+        manifestPlaceholders = [auth0Domain: "myplantpet.eu.auth0.com", auth0Scheme: "${applicationId}"]
     }
+
     splits {
         abi {
             reset()

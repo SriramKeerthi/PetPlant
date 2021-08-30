@@ -24,10 +24,11 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "pet.myplant.MyPlantPet"
+      "package": "pet.myplant.myplantpet"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "scheme": "pet.myplant.myplantpet"
   }
 }
