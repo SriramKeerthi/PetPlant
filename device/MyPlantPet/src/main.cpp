@@ -62,26 +62,25 @@ class PetPlantCallbacks: public BLEAdvertisedDeviceCallbacks {
         if (pref.isKey(CFG_OWNER_UUID)) { // There is an owner already
             if (pref.getString(CFG_OWNER_UUID).equals(manufacturerData.substring(8, 40))) { // And it's communicating
                 if (major == pref.getInt(CFG_CODE)) {
+                    int rxPower = advertisedDevice.getRSSI();
+                    double distance = calculateDistance(txPower, rxPower);
+                    Serial.printf("TX: %d RX: %d Distance: %lfm\n", txPower, rxPower, distance);
+                    if (distance < 2.0) {
+                        lastDeviceNear = millis();
+                        if (distance < 0.5) {
+                            ledcWrite(LED_CHANNEL, 255);
+                        }
+                    }
                     if (minor == 0) {
                         clearScreen();
-                        tft.setTextSize(5);
-                        tft.setCursor(0,0);
+                        tft.setTextSize(4);
+                        tft.setCursor(0,42);
                         tft.println("Goodbye :(");
                         ledcWrite(LED_CHANNEL, 255);
-                        pref.remove(CFG_OWNER_UUID);
                         Serial.printf("Removed owner, restarting...");
                         delay(1000);
+                        pref.remove(CFG_OWNER_UUID);
                         ESP.restart();
-                    } else {
-                        int rxPower = advertisedDevice.getRSSI();
-                        double distance = calculateDistance(txPower, rxPower);
-                        Serial.printf("TX: %d RX: %d Distance: %lfm\n", txPower, rxPower, distance);
-                        if (distance < 2.0) {
-                            lastDeviceNear = millis();
-                            if (distance < 0.5) {
-                                ledcWrite(LED_CHANNEL, 255);
-                            }
-                        }
                     }
                 } else {
                     // Code seems wrong, ignore
