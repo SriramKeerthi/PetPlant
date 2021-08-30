@@ -69,16 +69,17 @@ class MyPlantPetCallbacks: public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) {
         uint8_t *data = (uint8_t*)advertisedDevice.getManufacturerData().data();
         int len = advertisedDevice.getManufacturerData().length();
-        char *temp = BLEUtils::buildHexData(nullptr, data, len);
-        String manufacturerData = String("") + temp;
-        free(temp);
         int major = (data[len-5]<<8 | data[len-4]);
         int minor = (data[len-3]<<8 | data[len-2]);
-        int txPower = (int8_t)data[len-1];
-        int rxPower = advertisedDevice.getRSSI();
+        String uuid = String(advertisedDevice.toString().c_str());
+        int subIndex = uuid.indexOf("manufacturer data: ") + 19;
+        uuid = uuid.substring(subIndex, subIndex + 32);
+
         if (pref.isKey(CFG_OWNER_UUID)) { // There is an owner already
-            if (pref.getString(CFG_OWNER_UUID).equals(manufacturerData.substring(8, 40))) { // And it's communicating
+            if (pref.getString(CFG_OWNER_UUID).equals(uuid)) { // And it's communicating
                 if (major == pref.getInt(CFG_CODE)) {
+                    int txPower = (int8_t)advertisedDevice.getManufacturerData().data()[len-1];
+                    int rxPower = advertisedDevice.getRSSI();
                     double distance = calculateDistance(txPower, rxPower);
                     Serial.printf("TX: %d RX: %d Distance: %lfm\n", txPower, rxPower, distance);
                     if (distance < 2.0) {
@@ -105,7 +106,7 @@ class MyPlantPetCallbacks: public BLEAdvertisedDeviceCallbacks {
         } else {
             // Check if advertiser is trying to connect
             if (pref.getInt(CFG_CODE) == major && minor > 0) {
-                pref.putString(CFG_OWNER_UUID, manufacturerData.substring(8, 40));
+                pref.putString(CFG_OWNER_UUID, uuid);
                 Serial.printf("Registered new owner: %s!\n", pref.getString(CFG_OWNER_UUID).c_str());
                 ledcWrite(LED_CHANNEL, 0);
                 clearScreen();
@@ -185,7 +186,7 @@ void setup() {
         "scanForDevices",
         64000,
         NULL,
-        0,
+        1,
         NULL,
         1);
 }
@@ -260,7 +261,7 @@ char levelToChar(int level) {
     return level == 0 ? ' ' : (level == 1 ? 176 : 177);
 }
 
-long refreshRate = 10;
+long refreshRate = 100;
 long printRate = 500;
 long logRate = 1000;
 char* msg = new char[100];
@@ -297,6 +298,9 @@ void loop() {
         } else {
             int t1Level = touchVal(t1Base, t1);
             int t2Level = touchVal(t2Base, t2);
+            if (t1Level > 0 || t2Level > 0) {
+                lastDeviceNear = millis(); // If it's touched, keep screen alive
+            }
 
             sprintf(msg, " MyPlantPet\n%s\n\n T1: %02d/%02d %c\n T2: %02d/%02d %c\n", hl, t1, t1Base, levelToChar(t1Level), t2, t2Base, levelToChar(t2Level));
             if (t1Level == 2 && t2Level == 2) {
@@ -305,7 +309,6 @@ void loop() {
                 b = random(0,255);
                 clearScreen(r,g,b);
                 lastPrint = 0;
-                lastDeviceNear = millis(); // If it's touched, don't turn off yet
             }
             if (millis() - lastLog > logRate) {
                 Serial.println(msg);
@@ -324,5 +327,5 @@ void loop() {
             }
         }
     }
-    delay(max(0ul, refreshRate - (millis() - startTime)));
+    delay(refreshRate);
 }
