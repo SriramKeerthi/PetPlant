@@ -274,6 +274,7 @@ long printRate = 500;
 long logRate = 1000;
 char* msg = new char[100];
 char hl[] = {253, 253, 253, 253, 253, 253, 253, 253, 253, 253, 253, 253, 253, 0};
+long lastChange = millis();
 long lastPrint = millis();
 long lastLog = millis();
 void loop() {
@@ -293,6 +294,12 @@ void loop() {
     if (t1 == 0 || t2 == 0)
         return;
 
+    // Ease the difference in baseline to measured value if there's a large but fixed change
+    if(millis()-lastChange > 5000) {
+        lastChange = millis();
+        t1Base = max(t1Base - 1, t1);
+        t2Base = max(t2Base - 1, t2);
+    }
 
     if (!pref.isKey(CFG_OWNER_UUID)) { // Device not bonded yet
         ledcWrite(LED_CHANNEL, 255);
