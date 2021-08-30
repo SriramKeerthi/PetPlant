@@ -37,10 +37,10 @@ void scanForDevices( void * pvParameters ) {
 void setup() {
     Serial.begin(115200);
     delay(100);
-    Serial.println("\n\n\n***********************\nPETPLANT DEVICE STARTED\n***********************\nInitializing...");
+    Serial.println("\n\n\n*************************\nMYPLANTPET DEVICE STARTED\n*************************\nInitializing...");
 
     Serial.println("Checking for owner...");
-    pref.begin("petplant");
+    pref.begin("myplantpet");
     if (pref.isKey(CFG_OWNER_UUID)) {
         Serial.printf("Owner exists: %s\n", pref.getString(CFG_OWNER_UUID).c_str());
     } else {
@@ -49,7 +49,7 @@ void setup() {
     
     Serial.println("Staring BLE Scanning...");
     // Initialize BLE device
-    BLEDevice::init("Pet Plant");
+    BLEDevice::init("MyPlantPet");
     pBLEScan = BLEDevice::getScan();
     pBLEScan->setAdvertisedDeviceCallbacks(new PetPlantCallbacks());
     pBLEScan->setActiveScan(true);
