@@ -129,13 +129,20 @@ bool faceMode = true;
 int r = 0x4B;
 int g = 0xAB;
 int b = 0x5C;
+int reset = 0;
 void buttonClickHandler(Button2& btn) {
     t1Base = touchRead(TOUCH_1);
     t2Base = touchRead(TOUCH_2);
+    reset = 0;
 }
 
 void tripleButtonClickHandler(Button2& btn) {
     faceMode = !faceMode;
+    reset = reset + 1;
+    if (reset == 3) {
+        pref.remove(CFG_OWNER_UUID);
+        ESP.restart();
+    }
 }
 
 void setup() {
@@ -260,7 +267,7 @@ char levelToChar(int level) {
     return level == 0 ? ' ' : (level == 1 ? 176 : 177);
 }
 
-long refreshRate = 100;
+long refreshRate = 50;
 long printRate = 500;
 long logRate = 1000;
 char* msg = new char[100];
