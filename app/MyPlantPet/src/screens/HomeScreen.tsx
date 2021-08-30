@@ -6,6 +6,7 @@ import * as AuthSession from 'expo-auth-session';
 import jwtDecode from 'jwt-decode';
 import credentials from '../config/auth0-configuration';
 import getUuid from 'uuid-by-string';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const authorizationEndpoint = "https://myplantpet.eu.auth0.com/authorize";
 
@@ -30,6 +31,11 @@ type JWTToken = {
 
 const HomeScreen = () => {
     const [uuid, setUuid] = useState('');
+    const [code, setCode] = useState<string>('');
+    const [major, setMajor] = useState<Number | undefined>(undefined);
+    const [minor, setMinor] = useState<Number | undefined>(undefined);
+    const [beaconState, setBeaconState] = useState(0);
+
     const [request, result, promptAsync] = AuthSession.useAuthRequest(
         {
             redirectUri,
@@ -60,15 +66,17 @@ const HomeScreen = () => {
                 const jwtToken = result.params.id_token;
                 const sub = jwtDecode<JWTToken>(jwtToken).sub;
                 setUuid(getUuid(sub));
+                AsyncStorage.getItem('code', (error, result) => {
+                    console.log('Got code', result);
+                    if (result) {
+                        setCode(result);
+                        connect();
+                    }
+                });
             }
         }
     }, [result]);
 
-
-    const [code, setCode] = useState<string>('');
-    const [major, setMajor] = useState<Number | undefined>(undefined);
-    const [minor, setMinor] = useState<Number | undefined>(undefined);
-    const [beaconState, setBeaconState] = useState(0);
 
     useEffect(() => {
         BeaconBroadcast.checkTransmissionSupported()
@@ -93,9 +101,11 @@ const HomeScreen = () => {
 
     const connect = () => {
         if (code) {
-            setBeaconState(1);
+            AsyncStorage.setItem('code', code);
             setMajor(parseInt(code));
             setMinor(1);
+            setBeaconState(1);
+            console.log('Connecting');
         }
     }
 
@@ -105,15 +115,18 @@ const HomeScreen = () => {
     }
 
     const reset = () => {
-        setBeaconState(0);
         setMajor(undefined);
         setMinor(undefined);
+        setBeaconState(0);
         setCode('');
+        AsyncStorage.setItem('code', '');
     }
 
     const logout = () => {
         setUuid('');
-        reset();
+        setBeaconState(0);
+        setMajor(undefined);
+        setMinor(undefined);
     }
 
     return (
@@ -124,23 +137,23 @@ const HomeScreen = () => {
                     <Button disabled={code.length != 4} onPress={connect}>Start Petting!</Button>
                 </>
             }
-            {beaconState == 1 &&
-                <>
-                    <Text style={{ alignSelf: "center" }}>Ready to pet your plant!</Text>
-                    <Button onPress={disconnect}>Disconnect</Button>
-                </>
-            }
-            {
-                beaconState == 2 &&
-                <>
-                    <Text style={{ alignSelf: "center" }}>Bring your phone near the plant and click done when the plant acknowledges!</Text>
-                    <Button onPress={reset}>Done!</Button>
-                </>
+                {beaconState == 1 &&
+                    <>
+                        <Text style={{ alignSelf: "center" }}>Ready to pet your plant!</Text>
+                        <Button onPress={disconnect}>Disconnect</Button>
+                    </>
+                }
+                {
+                    beaconState == 2 &&
+                    <>
+                        <Text style={{ alignSelf: "center" }}>Bring your phone near the plant and click done when the plant acknowledges!</Text>
+                        <Button onPress={reset}>Done!</Button>
+                    </>
                 }
                 <Button style={{ marginTop: 20 }} onPress={logout}>Logout</Button></>}
             {!uuid &&
                 <>
-                    <Text>You're not logged in</Text>
+                <Text style={{ alignSelf: "center" }}>You're not logged in</Text>
                     <Button onPress={() => promptAsync({ useProxy })}>Login</Button>
                 </>}
         </View>
