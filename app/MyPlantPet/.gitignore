@@ -74,4 +74,6 @@ web-build/
 
 # Android SDK
 local.properties
-auth0-configurations.ts
+
+# Auth0
+auth0-configuration.ts
