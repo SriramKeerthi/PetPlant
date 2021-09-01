@@ -19,13 +19,15 @@
     "ios": {
       "supportsTablet": true
     },
-    "androidStatusBar": {"backgroundColor": "red"},
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "pet.myplant.myplantpet"
+      "package": "pet.myplant.myplantpet",
+      "splash": {
+        "image": "./assets/splash.png"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
