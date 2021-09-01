@@ -8,7 +8,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#7ac297"
     },
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -19,6 +19,7 @@
     "ios": {
       "supportsTablet": true
     },
+    "androidStatusBar": {"backgroundColor": "red"},
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
