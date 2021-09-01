@@ -14,7 +14,8 @@
 #define PIXEL_SIZE         15
 #define PIXELS_X           TFT_HEIGHT/PIXEL_SIZE
 #define PIXELS_Y           TFT_WIDTH/PIXEL_SIZE
-#define INACTIVITY_TIMEOUT 5000
+#define INACTIVITY_TIMEOUT 2000
+#define MAX_BRIGHT         64
 #define _RGB(r, g, b)      ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
 
 
@@ -87,7 +88,7 @@ class MyPlantPetCallbacks: public BLEAdvertisedDeviceCallbacks {
                     if (distance < NEARBY_DISTANCE) {
                         lastDeviceNear = millis();
                         if (distance < CLOSE_DISTANCE) {
-                            ledcWrite(LED_CHANNEL, 255);
+                            ledcWrite(LED_CHANNEL, MAX_BRIGHT);
                         }
                     }
                     if (minor == 0) {
@@ -95,7 +96,7 @@ class MyPlantPetCallbacks: public BLEAdvertisedDeviceCallbacks {
                         tft.setTextSize(4);
                         tft.setCursor(0,42);
                         tft.println("Goodbye :(");
-                        ledcWrite(LED_CHANNEL, 255);
+                        ledcWrite(LED_CHANNEL, MAX_BRIGHT);
                         Serial.printf("Removed owner, restarting...");
                         delay(1000);
                         pref.remove(CFG_OWNER_UUID);
@@ -175,7 +176,7 @@ void setup() {
     ledcSetup(LED_CHANNEL, 5000, 8);
     ledcAttachPin(LED_PIN, LED_CHANNEL);
     tft.init();
-    tft.setRotation(1);
+    tft.setRotation(3);
     tft.setTextSize(7);
     clearScreen();
 
@@ -302,7 +303,7 @@ void loop() {
     }
 
     if (!pref.isKey(CFG_OWNER_UUID)) { // Device not bonded yet
-        ledcWrite(LED_CHANNEL, 255);
+        ledcWrite(LED_CHANNEL, MAX_BRIGHT);
         tft.setTextSize(7);
         tft.setCursor(42,42);
         tft.printf("%04d", pref.getInt(CFG_CODE));
