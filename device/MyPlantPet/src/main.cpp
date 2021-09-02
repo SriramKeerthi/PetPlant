@@ -9,32 +9,36 @@
 
 
 /* Screen Settings */
-#define LED_CHANNEL        1
-#define LED_PIN            4
-#define PIXEL_SIZE         15
-#define PIXELS_X           TFT_HEIGHT/PIXEL_SIZE
-#define PIXELS_Y           TFT_WIDTH/PIXEL_SIZE
-#define INACTIVITY_TIMEOUT 2000
-#define MAX_BRIGHT         64
-#define _RGB(r, g, b)      ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
+#define LED_CHANNEL            1
+#define LED_PIN                4
+#define PIXEL_SIZE             15
+#define PIXELS_X               TFT_HEIGHT/PIXEL_SIZE
+#define PIXELS_Y               TFT_WIDTH/PIXEL_SIZE
+#define INACTIVITY_TIMEOUT     2000
+#define MAX_BRIGHT             64
+#define _RGB(r, g, b)          ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
 
 
 /* Input Settings */
-#define TOUCH_1            12
-#define TOUCH_2            13
-#define BUTTON_1           0
-#define BUTTON_2           35
+#define TOUCH_1                12
+#define TOUCH_2                13
+#define BUTTON_1               0
+#define BUTTON_2               35
 
 /* BLE Settings */
-#define BLE_SCAN_TIME      30
-#define BLE_INTERVAL       100
-#define BLE_WINDOW         99
-#define CLOSE_DISTANCE     0.8
-#define NEARBY_DISTANCE    1.4
+#define BLE_SCAN_TIME          30
+#define BLE_INTERVAL           100
+#define BLE_WINDOW             99
 
 /* Config Strings */
-#define CFG_OWNER_UUID     "OWNER_UUID"
-#define CFG_CODE           "CODE"
+#define CFG_OWNER_UUID         "OWNER_UUID"
+#define CFG_CODE               "CODE"
+#define CFG_DISTANCE_IMMEDIATE "DISTANCE_IMM"
+#define CFG_DISTANCE_NEAR      "DISTANCE_NEAR"
+#define CFG_COLOR_R            "COLOR_R"
+#define CFG_COLOR_G            "COLOR_G"
+#define CFG_COLOR_B            "COLOR_B"
+
 
 TFT_eSPI tft = TFT_eSPI(135, 240);
 Preferences pref;
@@ -84,10 +88,10 @@ class MyPlantPetCallbacks: public BLEAdvertisedDeviceCallbacks {
                     int txPower = (int8_t)advertisedDevice.getManufacturerData().data()[len-1];
                     int rxPower = advertisedDevice.getRSSI();
                     double distance = calculateDistance(txPower, rxPower);
-                    Serial.printf("TX: %d RX: %d Distance: %lfm\n", txPower, rxPower, distance);
-                    if (distance < NEARBY_DISTANCE) {
+                    Serial.printf("TX: %d RX: %d Distance: %lfm Immediate: %lfm Near: %lfm\n", txPower, rxPower, distance, ((double)pref.getInt(CFG_DISTANCE_IMMEDIATE)), ((double)pref.getInt(CFG_DISTANCE_NEAR)));
+                    if (distance < ((double)pref.getInt(CFG_DISTANCE_NEAR)) / 100.0) {
                         lastDeviceNear = millis();
-                        if (distance < CLOSE_DISTANCE) {
+                        if (distance < ((double)pref.getInt(CFG_DISTANCE_IMMEDIATE)) / 100.0) {
                             ledcWrite(LED_CHANNEL, MAX_BRIGHT);
                         }
                     }
@@ -160,6 +164,10 @@ void setup() {
     } else {
         Serial.println("No owner found, adding a code");
         pref.putInt(CFG_CODE, random(10000)); // Generate a random number between 0 - 10000
+    }
+    if (!pref.isKey(CFG_DISTANCE_IMMEDIATE)) {
+        pref.putInt(CFG_DISTANCE_IMMEDIATE, 100);
+        pref.putInt(CFG_DISTANCE_NEAR, 200);
     }
 
     Serial.println("Setting up buttons...");
